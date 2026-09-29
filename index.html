@@ -161,6 +161,9 @@
   .navbar{ position:absolute; left:0; right:0; bottom: max(14px, env(safe-area-inset-bottom)); height:44px; display:flex; align-items:center; justify-content:space-between; padding: 0 20px; z-index:5; pointer-events:none; }
   .navbar::before{ content:""; position:absolute; left:0; right:0; bottom:-14px; height:80px; background: linear-gradient(to top, var(--bg) 60%, rgba(5,8,13,0)); z-index:-1; pointer-events:none; }
   .nav-btn{ font-family:'Karla', sans-serif; font-weight:700; font-size:13px; letter-spacing:0.04em; color: var(--accent); background:none; border:none; padding: 10px 6px; cursor:pointer; display:flex; align-items:center; gap:5px; transition: opacity 0.2s ease; pointer-events:auto; }
+  .nav-btn.home{ background: var(--card); border:1px solid var(--line); border-radius:999px; padding: 8px 14px; color: var(--ink); }
+  .nav-btn.home .arrow{ color: var(--accent); font-size:16px; }
+  .nav-btn.home.hidden{ opacity:0; pointer-events:none; }
   .nav-btn:disabled{ opacity:0; pointer-events:none; }
   .nav-btn .arrow{ font-size:15px; line-height:1; }
 
@@ -395,6 +398,7 @@
 
   <div class="navbar">
     <button class="nav-btn prev" id="prevBtn"><span class="arrow">&larr;</span> prev</button>
+    <button class="nav-btn home" id="homeBtn"><span class="arrow">⌂</span> <span id="homeLabel">home</span></button>
     <button class="nav-btn next" id="nextBtn">next <span class="arrow">&rarr;</span></button>
   </div>
 
@@ -1571,6 +1575,8 @@
   const progressEl = document.getElementById('progress');
   const prevBtn = document.getElementById('prevBtn');
   const nextBtn = document.getElementById('nextBtn');
+  const homeBtn = document.getElementById('homeBtn');
+  const homeLabel = document.getElementById('homeLabel');
 
   function refreshPagesList(){
     pages = Array.from(document.querySelectorAll('.page'));
@@ -1604,6 +1610,9 @@
     segs.forEach((s, i) => { s.classList.toggle('on', i === current); s.classList.toggle('done', i < current); });
     prevBtn.disabled = current === 0;
     nextBtn.disabled = current === total - 1;
+    const key = pages[current] ? pages[current].dataset.key : '';
+    homeBtn.classList.toggle('hidden', key === 'trip-select');
+    homeLabel.textContent = key === 'toc' ? 'all trips' : 'home';
     if (pages[current]) pages[current].scrollTop = 0;
   }
   function goNext(){ if (current < total - 1){ current++; render(); } }
@@ -1611,6 +1620,12 @@
 
   prevBtn.addEventListener('click', (e) => { e.stopPropagation(); goPrev(); });
   nextBtn.addEventListener('click', (e) => { e.stopPropagation(); goNext(); });
+  // Home = this trip's contents page; from the contents page it goes to the trip list.
+  homeBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const key = pages[current] ? pages[current].dataset.key : '';
+    gotoKey(key === 'toc' ? 'trip-select' : 'toc');
+  });
 
   const TAP_IGNORE = ['.nav-btn', '.event', '.add-event-row', '.flight-row', '.toc-row', '.photo-card',
     '.add-photo-card', '.gear-row', '.gear-add', '.day-edit-btn', '.day-delete-btn', '.cover-edit-btn',
