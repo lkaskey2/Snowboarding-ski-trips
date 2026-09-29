@@ -162,6 +162,7 @@
   .navbar{ position:absolute; left:0; right:0; bottom: max(14px, env(safe-area-inset-bottom)); height:44px; display:flex; align-items:center; justify-content:space-between; padding: 0 20px; z-index:5; pointer-events:none; }
   .navbar::before{ content:""; position:absolute; left:0; right:0; bottom:-14px; height:80px; background: linear-gradient(to top, var(--bg) 60%, rgba(5,8,13,0)); z-index:-1; pointer-events:none; }
   .nav-btn{ font-family:'Karla', sans-serif; font-weight:700; font-size:13px; letter-spacing:0.04em; color: var(--accent); background:none; border:none; padding: 10px 6px; cursor:pointer; display:flex; align-items:center; gap:5px; transition: opacity 0.2s ease; pointer-events:auto; }
+  .inline-link{ color: var(--accent); font-weight:600; text-decoration:underline; text-underline-offset:2px; overflow-wrap:anywhere; -webkit-user-select:auto; }
   .nav-btn.home{ background: var(--card); border:1px solid var(--line); border-radius:999px; padding: 8px 14px; color: var(--ink); }
   .nav-btn.home .arrow{ color: var(--accent); font-size:16px; }
   .nav-btn.home.hidden{ opacity:0; pointer-events:none; }
@@ -448,7 +449,7 @@
       <input type="time" id="flDepart">
     </div>
     <div class="field">
-      <label>Address / Additional Notes (optional)</label>
+      <label>Address / Notes / Link (optional)</label>
       <input type="text" id="flNote" placeholder="">
     </div>
     <div class="modal-actions">
@@ -464,7 +465,7 @@
     <div class="modal-title">Where We're Staying</div>
     <div class="field"><label>Lodge / Rental</label><input type="text" id="stHotel" placeholder="e.g. VRBO, slopeside lodge"></div>
     <div class="field"><label>Length of Stay</label><input type="text" id="stNights" placeholder="e.g. 4 nights"></div>
-    <div class="field"><label>Address / Notes (optional)</label><input type="text" id="stType" placeholder="e.g. Address, door code"></div>
+    <div class="field"><label>Address / Notes / Link (optional)</label><input type="text" id="stType" placeholder="e.g. Address, door code, or a link"></div>
     <div class="modal-actions">
       <button class="btn btn-cancel" id="stBtnCancel">Cancel</button>
       <button class="btn btn-save" id="stBtnSave">Save</button>
@@ -803,6 +804,16 @@
     });
   }
   function sortDays(){ T().days.sort((a, b) => a.key < b.key ? -1 : (a.key > b.key ? 1 : 0)); }
+  // Escapes text, then turns any web address in it into a tappable link that
+  // opens in a new tab (without also opening the row's edit form).
+  function linkify(str){
+    return escapeHtml(str).replace(/\b((?:https?:\/\/|www\.)[^\s<]+[^\s<.,;:!?)\]'"])/gi, (m) => {
+      const href = /^https?:/i.test(m) ? m : 'https://' + m;
+      let label = m.replace(/^https?:\/\//i, '').replace(/^www\./i, '');
+      if (label.length > 32) label = label.slice(0, 30) + '…';
+      return '<a class="inline-link" href="' + href + '" target="_blank" rel="noopener">' + label + ' ↗</a>';
+    });
+  }
   function escapeHtml(str){ const d = document.createElement('div'); d.textContent = str == null ? '' : String(str); return d.innerHTML; }
 
   // Shrinks a picked photo before it leaves the phone.
@@ -899,7 +910,7 @@
             '<div class="event-time">' + (ev.time ? formatTime(ev.time) : '') + '</div>' +
             '<div class="event-icon">' + escapeHtml(ev.icon || '📌') + '</div>' +
             '<div class="event-body"><div class="event-title">' + escapeHtml(ev.title) + '</div>' +
-              (ev.note ? '<div class="event-note">' + escapeHtml(ev.note) + '</div>' : '') +
+              (ev.note ? '<div class="event-note">' + linkify(ev.note) + '</div>' : '') +
             '</div>' +
           '</div>').join('');
 
@@ -1064,9 +1075,9 @@
       sub = 'Tap to add details';
     } else {
       const parts = [];
-      if (t.flightNumber) parts.push(escapeHtml(t.flightNumber));
+      if (t.flightNumber) parts.push(linkify(t.flightNumber));
       if (t.depart) parts.push(formatTime(t.depart));
-      if (t.note) parts.push(escapeHtml(t.note));
+      if (t.note) parts.push(linkify(t.note));
       sub = parts.join(' &middot; ');
     }
     let date = '';
@@ -1101,8 +1112,8 @@
       sub = 'Tap to add lodging';
     } else {
       const parts = [];
-      if (stay.nights) parts.push(escapeHtml(stay.nights));
-      if (stay.type) parts.push(escapeHtml(stay.type));
+      if (stay.nights) parts.push(linkify(stay.nights));
+      if (stay.type) parts.push(linkify(stay.type));
       sub = parts.join(' &middot; ') || 'Tap to edit';
     }
     card.innerHTML =
@@ -1632,6 +1643,11 @@
     '.add-photo-card', '.gear-row', '.gear-add', '.day-edit-btn', '.day-delete-btn', '.cover-edit-btn',
     '.btn-add-day', '.photo-paste-target'];
   const OVERLAYS = [modalOverlay, flightModalOverlay, stayModalOverlay, photoModalOverlay, addDayModalOverlay, tripModalOverlay];
+
+  // Links open on their own; don't also open the edit form or turn the page.
+  document.getElementById('phone').addEventListener('click', (e) => {
+    if (e.target.closest('a.inline-link')) e.stopPropagation();
+  }, true);
 
   document.getElementById('phone').addEventListener('click', (e) => {
     if (TAP_IGNORE.some(sel => e.target.closest(sel))) return;
